@@ -1,38 +1,56 @@
-const mockUsers = require("../datamock/users.mock");
+const User = require("../model/user.model");
 const bcrypt = require("bcrypt");
-
-// Store for mock data (simulating database)
-let users = [...mockUsers];
-let idCounter = users.length + 1;
 
 const UserController = {
     // Get all users
-    getAllUsers: (req, res) => {
-        const usersWithoutPassword = users.map(({ password, ...user }) => user);
-        res.status(200).json({
-            success: true,
-            data: usersWithoutPassword,
-            message: "Users retrieved successfully",
-        });
+    getAllUsers: async (req, res) => {
+        try {
+            const users = await User.find().select("-passwordHash");
+            res.status(200).json({
+                success: true,
+                data: users,
+                message: "Users retrieved successfully",
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: "Error retrieving users",
+                error: error.message,
+            });
+        }
     },
 
     // Get user by ID
-    getUserById: (req, res) => {
-        const { id } = req.params;
-        const user = users.find((u) => u.id === id);
+    getUserById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = await User.findById(id).select("-passwordHash");
 
-        if (!user) {
-            return res.status(404).json({
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: user,
+            });
+        } catch (error) {
+            // Handle invalid ObjectId format
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid user ID format",
+                });
+            }
+            res.status(500).json({
                 success: false,
-                message: "User not found",
+                message: "Error retrieving user",
+                error: error.message,
             });
         }
-
-        const { password, ...userWithoutPassword } = user;
-        res.status(200).json({
-            success: true,
-            data: userWithoutPassword,
-        });
     },
 
     // Register new user
@@ -40,39 +58,61 @@ const UserController = {
         try {
             const { username, email, password } = req.body;
 
-            // Check if user already exists
-            const existingUser = users.find(
-                (u) => u.email === email || u.username === username
-            );
-
-            if (existingUser) {
+            // Validate required fields
+            if (!username || !email || !password) {
                 return res.status(400).json({
                     success: false,
-                    message: "User with this email or username already exists",
+                    message: "Username, email, and password are required",
                 });
             }
 
             // Hash password
-            const hashedPassword = await bcrypt.hash(password, 10);
+            const passwordHash = await bcrypt.hash(password, 10);
 
             // Create new user
-            const newUser = {
-                id: String(idCounter++),
+            const newUser = await User.create({
                 username,
                 email,
-                password: hashedPassword,
-                token: null,
+                passwordHash,
+            });
+
+            // Return user without passwordHash
+            const userResponse = {
+                _id: newUser._id,
+                username: newUser.username,
+                email: newUser.email,
+                createdAt: newUser.createdAt,
             };
 
-            users.push(newUser);
-
-            const { password: _, ...userWithoutPassword } = newUser;
             res.status(201).json({
                 success: true,
-                data: userWithoutPassword,
+                data: userResponse,
                 message: "User registered successfully",
             });
         } catch (error) {
+            // Handle duplicate key error (E11000)
+            if (error.code === 11000) {
+                const field = Object.keys(error.keyPattern)[0];
+                return res.status(409).json({
+                    ok: false,
+                    error: {
+                        code: field === "email" ? "EMAIL_EXISTS" : "DUPLICATE_KEY",
+                        message: field === "email" 
+                            ? "อีเมลนี้ถูกใช้แล้ว" 
+                            : `${field} นี้ถูกใช้แล้ว`,
+                    },
+                });
+            }
+
+            // Handle validation errors
+            if (error.name === "ValidationError") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Validation error",
+                    error: Object.values(error.errors).map((e) => e.message),
+                });
+            }
+
             res.status(500).json({
                 success: false,
                 message: "Error registering user",
@@ -86,8 +126,16 @@ const UserController = {
         try {
             const { email, password } = req.body;
 
+            // Validate required fields
+            if (!email || !password) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Email and password are required",
+                });
+            }
+
             // Find user by email
-            const user = users.find((u) => u.email === email);
+            const user = await User.findOne({ email });
 
             if (!user) {
                 return res.status(401).json({
@@ -96,20 +144,28 @@ const UserController = {
                 });
             }
 
-            // For mock data, we'll just generate a token
-            // In real app, you'd verify password with bcrypt.compare
-            const token = `mock_token_${user.username}_${Date.now()}`;
+            // Verify password
+            const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
-            // Update user token
-            user.token = token;
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid email or password",
+                });
+            }
 
-            const { password: _, ...userWithoutPassword } = user;
+            // Return user without passwordHash
+            // Note: JWT token generation will be added in Sprint 1
+            const userResponse = {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                createdAt: user.createdAt,
+            };
+
             res.status(200).json({
                 success: true,
-                data: {
-                    ...userWithoutPassword,
-                    token,
-                },
+                data: userResponse,
                 message: "Login successful",
             });
         } catch (error) {
@@ -121,70 +177,88 @@ const UserController = {
         }
     },
 
-    // Logout user
-    logout: (req, res) => {
-        const { id } = req.params;
-        const user = users.find((u) => u.id === id);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-
-        user.token = null;
-        res.status(200).json({
-            success: true,
-            message: "Logout successful",
-        });
-    },
-
     // Update user
-    updateUser: (req, res) => {
-        const { id } = req.params;
-        const { username, email } = req.body;
+    updateUser: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { username, email } = req.body;
 
-        const userIndex = users.findIndex((u) => u.id === id);
+            const user = await User.findByIdAndUpdate(
+                id,
+                { username, email },
+                { new: true, runValidators: true }
+            ).select("-passwordHash");
 
-        if (userIndex === -1) {
-            return res.status(404).json({
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: user,
+                message: "User updated successfully",
+            });
+        } catch (error) {
+            // Handle duplicate key error
+            if (error.code === 11000) {
+                return res.status(409).json({
+                    ok: false,
+                    error: {
+                        code: "EMAIL_EXISTS",
+                        message: "อีเมลนี้ถูกใช้แล้ว",
+                    },
+                });
+            }
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid user ID format",
+                });
+            }
+
+            res.status(500).json({
                 success: false,
-                message: "User not found",
+                message: "Error updating user",
+                error: error.message,
             });
         }
-
-        users[userIndex] = {
-            ...users[userIndex],
-            username: username || users[userIndex].username,
-            email: email || users[userIndex].email,
-        };
-
-        const { password, ...userWithoutPassword } = users[userIndex];
-        res.status(200).json({
-            success: true,
-            data: userWithoutPassword,
-            message: "User updated successfully",
-        });
     },
 
     // Delete user
-    deleteUser: (req, res) => {
-        const { id } = req.params;
-        const userIndex = users.findIndex((u) => u.id === id);
+    deleteUser: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = await User.findByIdAndDelete(id);
 
-        if (userIndex === -1) {
-            return res.status(404).json({
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "User deleted successfully",
+            });
+        } catch (error) {
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid user ID format",
+                });
+            }
+
+            res.status(500).json({
                 success: false,
-                message: "User not found",
+                message: "Error deleting user",
+                error: error.message,
             });
         }
-
-        users.splice(userIndex, 1);
-        res.status(200).json({
-            success: true,
-            message: "User deleted successfully",
-        });
     },
 };
 
