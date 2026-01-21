@@ -94,20 +94,17 @@ app.get("/api", (req, res) => {
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
-    success: false,
-    message: "Route not found",
+    ok: false,
+    error: {
+      code: "NOT_FOUND",
+      message: "Route not found",
+    },
   });
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-    error: err.message,
-  });
-});
+// Central Error Handler (must be last)
+const errorHandler = require("./middleware/errorHandler");
+app.use(errorHandler);
 
 // Connect to MongoDB and start server
 const startServer = async () => {

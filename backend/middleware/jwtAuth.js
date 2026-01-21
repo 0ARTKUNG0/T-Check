@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const sendError = require("../utils/sendError");
 
 /**
  * JWT Authentication Middleware
@@ -11,25 +12,13 @@ const jwtAuth = (req, res, next) => {
 
     // Check if header exists
     if (!authHeader) {
-        return res.status(401).json({
-            ok: false,
-            error: {
-                code: "MISSING_TOKEN",
-                message: "กรุณาเข้าสู่ระบบ",
-            },
-        });
+        return sendError(res, 401, "MISSING_TOKEN", "กรุณาเข้าสู่ระบบ");
     }
 
     // Check Bearer format
     const parts = authHeader.split(" ");
     if (parts.length !== 2 || parts[0] !== "Bearer") {
-        return res.status(401).json({
-            ok: false,
-            error: {
-                code: "INVALID_TOKEN",
-                message: "Token ไม่ถูกต้อง",
-            },
-        });
+        return sendError(res, 401, "INVALID_TOKEN", "Token ไม่ถูกต้อง");
     }
 
     const token = parts[1];
@@ -38,13 +27,7 @@ const jwtAuth = (req, res, next) => {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
         console.error("JWT_SECRET is not defined");
-        return res.status(500).json({
-            ok: false,
-            error: {
-                code: "SERVER_MISCONFIG",
-                message: "JWT secret ไม่ถูกตั้งค่า",
-            },
-        });
+        return sendError(res, 500, "SERVER_MISCONFIG", "JWT secret ไม่ถูกตั้งค่า");
     }
 
     // Verify token
@@ -62,23 +45,11 @@ const jwtAuth = (req, res, next) => {
     } catch (error) {
         // Token expired
         if (error.name === "TokenExpiredError") {
-            return res.status(401).json({
-                ok: false,
-                error: {
-                    code: "TOKEN_EXPIRED",
-                    message: "Token หมดอายุ",
-                },
-            });
+            return sendError(res, 401, "TOKEN_EXPIRED", "Token หมดอายุ");
         }
 
         // Invalid token
-        return res.status(401).json({
-            ok: false,
-            error: {
-                code: "INVALID_TOKEN",
-                message: "Token ไม่ถูกต้อง",
-            },
-        });
+        return sendError(res, 401, "INVALID_TOKEN", "Token ไม่ถูกต้อง");
     }
 };
 

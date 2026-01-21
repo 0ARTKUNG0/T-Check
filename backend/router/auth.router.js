@@ -3,6 +3,7 @@ const router = express.Router();
 const rateLimit = require("express-rate-limit");
 const AuthController = require("../controller/auth.controller");
 const jwtAuth = require("../middleware/jwtAuth");
+const sendError = require("../utils/sendError");
 
 // Rate limiter for login (10 requests per minute per IP)
 const loginLimiter = rateLimit({
@@ -11,13 +12,7 @@ const loginLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {
-        return res.status(429).json({
-            ok: false,
-            error: {
-                code: "RATE_LIMIT",
-                message: "ลองใหม่ภายหลัง",
-            },
-        });
+        return sendError(res, 429, "RATE_LIMIT", "ลองใหม่ภายหลัง");
     },
 });
 
