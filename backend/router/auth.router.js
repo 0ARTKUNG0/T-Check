@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
 const AuthController = require("../controller/auth.controller");
+const jwtAuth = require("../middleware/jwtAuth");
 
 // Rate limiter for login (10 requests per minute per IP)
 const loginLimiter = rateLimit({
@@ -27,5 +28,16 @@ router.post("/register", AuthController.register);
 // Login user (with rate limiting)
 // POST /api/auth/login
 router.post("/login", loginLimiter, AuthController.login);
+
+// Get current user (protected)
+// GET /api/auth/me
+router.get("/me", jwtAuth, (req, res) => {
+    return res.status(200).json({
+        success: true,
+        data: {
+            user: req.user,
+        },
+    });
+});
 
 module.exports = router;
