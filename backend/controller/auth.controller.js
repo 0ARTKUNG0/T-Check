@@ -1,5 +1,6 @@
 const User = require("../model/user.model");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 // Email validation regex (simple for MVP)
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -112,6 +113,127 @@ const AuthController = {
 
             // Other errors
             console.error("Register error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal server error",
+                error: error.message,
+            });
+        }
+    },
+
+    /**
+     * Login user
+     * POST /api/auth/login
+     * Body: { usernameOrEmail, password } or { email, password } or { username, password }
+     */
+    login: async (req, res) => {
+        try {
+            const { usernameOrEmail, email, username, password } = req.body;
+
+            // (3.1) Get identifier (priority: usernameOrEmail > email > username)
+            const identifier = usernameOrEmail || email || username;
+
+            // Validation
+            if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+                return res.status(400).json({
+                    ok: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "ข้อมูลไม่ถูกต้อง",
+                        fields: { identifier: "Username or email is required" },
+                    },
+                });
+            }
+
+            if (!password || typeof password !== "string") {
+                return res.status(400).json({
+                    ok: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "ข้อมูลไม่ถูกต้อง",
+                        fields: { password: "Password is required" },
+                    },
+                });
+            }
+
+            // (3.2) Normalize
+            const trimmedIdentifier = identifier.trim();
+            const identifierLower = trimmedIdentifier.toLowerCase();
+            const isEmail = emailRegex.test(trimmedIdentifier);
+
+            // (3.3) Find user
+            let user;
+            if (isEmail) {
+                user = await User.findOne({ email: identifierLower });
+            } else {
+                // Search by username or email
+                user = await User.findOne({
+                    $or: [
+                        { username: trimmedIdentifier },
+                        { email: identifierLower }
+                    ]
+                });
+            }
+
+            // (3.4) Verify password
+            if (!user) {
+                return res.status(401).json({
+                    ok: false,
+                    error: {
+                        code: "INVALID_CREDENTIALS",
+                        message: "อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+                    },
+                });
+            }
+
+            const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    ok: false,
+                    error: {
+                        code: "INVALID_CREDENTIALS",
+                        message: "อีเมล/ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+                    },
+                });
+            }
+
+            // (3.5) Issue JWT
+            const jwtSecret = process.env.JWT_SECRET;
+            if (!jwtSecret) {
+                console.error("JWT_SECRET is not defined");
+                return res.status(500).json({
+                    success: false,
+                    message: "Server configuration error: JWT_SECRET not defined",
+                });
+            }
+
+            const token = jwt.sign(
+                {
+                    sub: user._id.toString(),
+                    email: user.email,
+                    username: user.username,
+                },
+                jwtSecret,
+                { expiresIn: "1h" }
+            );
+
+            // Return 200 with token and user (no passwordHash)
+            return res.status(200).json({
+                success: true,
+                data: {
+                    token,
+                    user: {
+                        id: user._id,
+                        username: user.username,
+                        email: user.email,
+                        createdAt: user.createdAt,
+                    },
+                },
+                message: "Login successful",
+            });
+        } catch (error) {
+            // (3.6) Error handling
+            console.error("Login error:", error);
             return res.status(500).json({
                 success: false,
                 message: "Internal server error",
