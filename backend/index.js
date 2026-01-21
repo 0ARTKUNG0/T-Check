@@ -1,10 +1,12 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const connectDB = require("./config/db");
 
 // Import routers
 const userRouter = require("./router/user.router");
 const chatRouter = require("./router/chat.router");
+const authRouter = require("./router/auth.router");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +37,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/chats", chatRouter);
 
@@ -50,6 +53,7 @@ app.get("/", (req, res) => {
     version: "1.0.0",
     endpoints: {
       health: "/health",
+      auth: "/api/auth",
       users: "/api/users",
       chats: "/api/chats",
     },
@@ -59,14 +63,16 @@ app.get("/", (req, res) => {
 // API documentation route
 app.get("/api", (req, res) => {
   res.json({
-    message: "Chat API Documentation",
+    message: "T-Check API Documentation",
     endpoints: {
+      auth: {
+        "POST /api/auth/register": "Register new user (validation: username min 2, email format, password min 8)",
+      },
       users: {
         "GET /api/users": "Get all users",
         "GET /api/users/:id": "Get user by ID",
-        "POST /api/users/register": "Register new user",
+        "POST /api/users/register": "Register new user (legacy)",
         "POST /api/users/login": "Login user",
-        "POST /api/users/logout/:id": "Logout user",
         "PUT /api/users/:id": "Update user",
         "DELETE /api/users/:id": "Delete user",
       },
@@ -101,8 +107,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
-});
+// Connect to MongoDB and start server
+const startServer = async () => {
+  await connectDB();
+  
+  app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
+  });
+};
+
+startServer();

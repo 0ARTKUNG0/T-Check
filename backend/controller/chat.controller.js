@@ -1,4 +1,4 @@
-const mockChats = require("../datamock/chats.mock");
+const mockChats = require("../datamock__backup/chats.mock");
 
 // Store for mock data (simulating database)
 let chats = [...mockChats];

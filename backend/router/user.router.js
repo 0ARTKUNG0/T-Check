@@ -14,9 +14,6 @@ router.post("/register", UserController.register);
 // Login user
 router.post("/login", UserController.login);
 
-// Logout user
-router.post("/logout/:id", UserController.logout);
-
 // Update user
 router.put("/:id", UserController.updateUser);
 
