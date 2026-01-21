@@ -31,13 +31,6 @@ router.post("/login", loginLimiter, AuthController.login);
 
 // Get current user (protected)
 // GET /api/auth/me
-router.get("/me", jwtAuth, (req, res) => {
-    return res.status(200).json({
-        success: true,
-        data: {
-            user: req.user,
-        },
-    });
-});
+router.get("/me", jwtAuth, AuthController.getMe);
 
 module.exports = router;

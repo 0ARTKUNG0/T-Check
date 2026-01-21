@@ -241,6 +241,59 @@ const AuthController = {
             });
         }
     },
+
+    /**
+     * Get current user from DB
+     * GET /api/auth/me
+     * Requires: jwtAuth middleware
+     */
+    getMe: async (req, res) => {
+        try {
+            const userId = req.user?.id;
+
+            if (!userId) {
+                return res.status(401).json({
+                    ok: false,
+                    error: {
+                        code: "UNAUTHORIZED",
+                        message: "ไม่พบข้อมูลผู้ใช้",
+                    },
+                });
+            }
+
+            // Query user from DB (exclude passwordHash)
+            const user = await User.findById(userId).select("_id username email createdAt");
+
+            if (!user) {
+                return res.status(404).json({
+                    ok: false,
+                    error: {
+                        code: "USER_NOT_FOUND",
+                        message: "ไม่พบผู้ใช้",
+                    },
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    user: {
+                        id: user._id,
+                        username: user.username,
+                        email: user.email,
+                        createdAt: user.createdAt,
+                    },
+                },
+            });
+        } catch (error) {
+            console.error("GetMe error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal server error",
+                error: error.message,
+            });
+        }
+    },
 };
 
 module.exports = AuthController;

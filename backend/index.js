@@ -7,6 +7,7 @@ const connectDB = require("./config/db");
 const userRouter = require("./router/user.router");
 const chatRouter = require("./router/chat.router");
 const authRouter = require("./router/auth.router");
+const homeRouter = require("./router/home.router");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -38,6 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/auth", authRouter);
+app.use("/api/home", homeRouter);
 app.use("/api/users", userRouter);
 app.use("/api/chats", chatRouter);
 
