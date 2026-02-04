@@ -50,8 +50,8 @@ const Login = () => {
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
                 <div className="card-body">
                     <div className="text-center mb-6">
-                        <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 text-primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                        <div className="bg-primary/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
                             </svg>
                         </div>
@@ -100,8 +100,8 @@ const Login = () => {
                                     required
                                 />
                             </div>
-                            <label className="label pb-0">
-                                <a href="#" className="label-text-alt link link-hover text-primary font-medium">ลืมรหัสผ่าน?</a>
+                            <label className="label pb-0 justify-end">
+                                <Link to="/forget-password" className="label-text-alt link link-hover text-primary font-medium">ลืมรหัสผ่าน?</Link>
                             </label>
                         </div>
 
