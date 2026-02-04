@@ -51,7 +51,7 @@ const Navbar = () => {
                     {/* Add more links here later */}
                 </ul>
             </div>
-            <div className="navbar-end hidden lg:flex gap-3">
+            <div className="navbar-end flex gap-3">
                 {/* Theme Toggle */}
                 <label className="swap swap-rotate btn btn-ghost btn-circle">
                     {/* this hidden checkbox controls the state */}
@@ -82,8 +82,10 @@ const Navbar = () => {
                 </label>
                 {!isAuthenticated ? (
                     <>
-                        <Link to="/login" className="btn btn-ghost hover:bg-base-200">เข้าสู่ระบบ</Link>
-                        <Link to="/register" className="btn btn-primary text-white shadow-md hover:shadow-lg transition-all">สมัครสมาชิก</Link>
+                        <Link to="/login" className="btn btn-ghost hover:bg-base-200 hidden lg:flex">เข้าสู่ระบบ</Link>
+                        <Link to="/register" className="btn btn-primary text-white shadow-md hover:shadow-lg transition-all hidden lg:flex">สมัครสมาชิก</Link>
+                        {/* Mobile Register Button - Visible only on small screens */}
+                        <Link to="/register" className="btn btn-sm btn-primary text-white lg:hidden">สมัครสมาชิก</Link>
                     </>
                 ) : (
                     <div className="dropdown dropdown-end">
@@ -108,13 +110,6 @@ const Navbar = () => {
                     </div>
                 )}
             </div>
-
-            {/* Mobile Navbar End */}
-            {!isAuthenticated && (
-                <div className="navbar-end lg:hidden">
-                    <Link to="/register" className="btn btn-sm btn-primary text-white">สมัครสมาชิก</Link>
-                </div>
-            )}
         </div>
     )
 }
